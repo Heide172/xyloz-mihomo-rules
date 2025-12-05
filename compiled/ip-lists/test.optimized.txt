@@ -1,0 +1,9 @@
+# Optimized version of test
+# Auto-generated on 2025-12-05 10:28:00 UTC
+# Total entries: 5
+
+1.2.3.4
+1.2.3.4-1.2.3.10
+10.0.0.0/8
+192.168.0.0/16
+8.8.8.8
