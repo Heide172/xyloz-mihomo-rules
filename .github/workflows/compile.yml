@@ -6,6 +6,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,15 +17,20 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-
-      - name: Install MRS CLI
+      - name: Download MRS binary
         run: |
-          go install github.com/MetaCubeX/mrs/cmd/mrs@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+          mkdir -p tools
+          cd tools
+          
+          # Скачиваем последний релиз
+          LATEST_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mrs/releases/latest \
+            | grep browser_download_url | grep linux-amd64 | cut -d '"' -f 4)
+
+          wget "$LATEST_URL" -O mrs.tar.gz
+          tar -xzf mrs.tar.gz
+          chmod +x mrs
+          
+          echo "$PWD" >> $GITHUB_PATH
 
       - name: Prepare folders
         run: mkdir -p compiled tmp_build
@@ -30,7 +38,7 @@ jobs:
       ############################################
       # 1) PROCESS DOMAIN LISTS
       ############################################
-      - name: Build combined domain rules
+      - name: Build combined domain rule text
         run: |
           OUTPUT="tmp_build/all-domains.txt"
           echo "" > "$OUTPUT"
@@ -42,8 +50,6 @@ jobs:
                 continue
               fi
 
-              # root domain → DOMAIN-SUFFIX
-              # subdomain → DOMAIN
               if [[ "$DOMAIN" != *"."*"."* ]]; then
                 echo "DOMAIN-SUFFIX,$DOMAIN" >> "$OUTPUT"
               else
@@ -54,14 +60,12 @@ jobs:
 
       - name: Compile domains.mrs
         run: |
-          mrs compile \
-            --output compiled/domains.mrs \
-            tmp_build/all-domains.txt
+          mrs compile --output compiled/domains.mrs tmp_build/all-domains.txt
 
       ############################################
       # 2) PROCESS IP LISTS
       ############################################
-      - name: Build combined ip rules
+      - name: Build combined IP rule text
         run: |
           OUTPUT="tmp_build/all-ips.txt"
           echo "" > "$OUTPUT"
@@ -78,18 +82,16 @@ jobs:
 
       - name: Compile ips.mrs
         run: |
-          mrs compile \
-            --output compiled/ips.mrs \
-            tmp_build/all-ips.txt
+          mrs compile --output compiled/ips.mrs tmp_build/all-ips.txt
 
       ############################################
-      # COMMIT & PUSH
+      # COMMIT
       ############################################
       - name: Commit compiled files
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-
+          
           git add compiled/
           git commit -m "🔧 Auto-compile domain + IP MRS" || echo "No changes"
 
