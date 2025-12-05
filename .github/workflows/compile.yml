@@ -2,7 +2,7 @@ name: Compile Rules to MRS
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
     paths:
       - 'lists/**'
       - 'ip-lists/**'
