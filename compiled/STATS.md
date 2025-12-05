@@ -1,11 +1,11 @@
 # 📊 Rules Statistics
 
-Generated: 2025-12-05 10:28:00 UTC
-Commit: e35419a166e64550748d030983a29d617b86cc3e
+Generated: 2025-12-05 10:40:00 UTC
+Commit: fc63baa3d69316afe734e2f2b820838c52a83b45
 
 ## Domain Lists
 
-| test.txt | 2 domains |
+| test.txt | 3 domains |
 
 ## IP Lists
 
