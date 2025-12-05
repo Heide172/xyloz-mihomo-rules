@@ -1,3 +1,4 @@
 # Тестовый файл для host маршрутов Mihomo
 pega.com
-test.com
+www.pega.com
+docs.pega.com
