@@ -14,13 +14,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install Go
+        uses: actions/setup-go@v5
         with:
-          python-version: "3.11"
+          go-version: "1.22"
 
-      - name: Install mrs-cli
-        run: pip install mihomo-rule-set
+      - name: Install MRS CLI
+        run: |
+          go install github.com/MetaCubeX/mrs/cmd/mrs@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Prepare folders
         run: mkdir -p compiled tmp_build
@@ -40,7 +42,8 @@ jobs:
                 continue
               fi
 
-              # classify domain vs subdomain
+              # root domain → DOMAIN-SUFFIX
+              # subdomain → DOMAIN
               if [[ "$DOMAIN" != *"."*"."* ]]; then
                 echo "DOMAIN-SUFFIX,$DOMAIN" >> "$OUTPUT"
               else
