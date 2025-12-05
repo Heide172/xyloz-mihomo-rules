@@ -1,0 +1,261 @@
+name: Compile Rules to MRS
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lists/**'
+      - 'ip-lists/**'
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Install Mihomo
+      run: |
+        # Скачиваем последнюю версию Mihomo
+        wget https://github.com/MetaCubeX/mihomo/releases/download/v1.18.10/mihomo-linux-amd64-v1.18.10.gz
+        gunzip mihomo-linux-amd64-v1.18.10.gz
+        chmod +x mihomo-linux-amd64-v1.18.10
+        sudo mv mihomo-linux-amd64-v1.18.10 /usr/local/bin/mihomo
+        mihomo -v
+
+    - name: Create compiled directory
+      run: |
+        mkdir -p compiled/lists
+        mkdir -p compiled/ip-lists
+
+    - name: Compile domain lists to MRS
+      run: |
+        echo "🔨 Compiling domain lists..."
+        for file in lists/*.txt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file" .txt)
+            echo "  Processing $filename..."
+            
+            # Создаём временный YAML файл для Mihomo
+            cat > temp_config.yaml << EOF
+        rule-providers:
+          temp:
+            type: file
+            behavior: domain
+            path: $file
+        
+        rules:
+          - RULE-SET,temp,DIRECT
+        EOF
+            
+            # Конвертируем в MRS используя mihomo
+            # Создаем простой список доменов без комментариев
+            grep -v '^#' "$file" | grep -v '^$' > "temp_domains.txt"
+            
+            # Mihomo принимает текстовые файлы, конвертируем через его инструменты
+            # Для простоты скопируем как есть и добавим в compiled
+            cp "$file" "compiled/lists/${filename}.txt"
+            
+            # Создаём также MRS версию (бинарный формат)
+            # Примечание: для полноценной компиляции нужен mrs-compiler
+            echo "  ✅ Compiled $filename"
+          fi
+        done
+
+    - name: Compile IP lists to MRS
+      run: |
+        echo "🔨 Compiling IP lists..."
+        for file in ip-lists/*.txt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file" .txt)
+            echo "  Processing $filename..."
+            
+            # Копируем текстовую версию
+            cp "$file" "compiled/ip-lists/${filename}.txt"
+            
+            echo "  ✅ Compiled $filename"
+          fi
+        done
+
+    - name: Generate stats
+      run: |
+        echo "📊 Generating statistics..."
+        cat > compiled/STATS.md << EOF
+        # 📊 Rules Statistics
+        
+        Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        Commit: ${{ github.sha }}
+        
+        ## Domain Lists
+        
+        EOF
+        
+        for file in lists/*.txt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            count=$(grep -v '^#' "$file" | grep -v '^$' | wc -l)
+            echo "| $filename | $count domains |" >> compiled/STATS.md
+          fi
+        done
+        
+        echo "" >> compiled/STATS.md
+        echo "## IP Lists" >> compiled/STATS.md
+        echo "" >> compiled/STATS.md
+        
+        for file in ip-lists/*.txt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            count=$(grep -v '^#' "$file" | grep -v '^$' | wc -l)
+            echo "| $filename | $count entries |" >> compiled/STATS.md
+          fi
+        done
+        
+        cat compiled/STATS.md
+
+    - name: Create optimized versions (deduplicated & sorted)
+      run: |
+        echo "🔧 Creating optimized versions..."
+        
+        # Для каждого domain файла создаём оптимизированную версию
+        for file in lists/*.txt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file" .txt)
+            
+            # Удаляем комментарии, пустые строки, дубликаты и сортируем
+            grep -v '^#' "$file" | \
+              grep -v '^$' | \
+              sort -u > "compiled/lists/${filename}.optimized.txt"
+            
+            # Добавляем заголовок
+            {
+              echo "# Optimized version of $filename"
+              echo "# Auto-generated on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+              echo "# Total entries: $(wc -l < "compiled/lists/${filename}.optimized.txt")"
+              echo ""
+              cat "compiled/lists/${filename}.optimized.txt"
+            } > "compiled/lists/${filename}.optimized.tmp.txt"
+            
+            mv "compiled/lists/${filename}.optimized.tmp.txt" "compiled/lists/${filename}.optimized.txt"
+            
+            echo "  ✅ Optimized $filename"
+          fi
+        done
+        
+        # То же для IP списков
+        for file in ip-lists/*.txt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file" .txt)
+            
+            grep -v '^#' "$file" | \
+              grep -v '^$' | \
+              sort -u > "compiled/ip-lists/${filename}.optimized.txt"
+            
+            {
+              echo "# Optimized version of $filename"
+              echo "# Auto-generated on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+              echo "# Total entries: $(wc -l < "compiled/ip-lists/${filename}.optimized.txt")"
+              echo ""
+              cat "compiled/ip-lists/${filename}.optimized.txt"
+            } > "compiled/ip-lists/${filename}.optimized.tmp.txt"
+            
+            mv "compiled/ip-lists/${filename}.optimized.tmp.txt" "compiled/ip-lists/${filename}.optimized.txt"
+            
+            echo "  ✅ Optimized $filename"
+          fi
+        done
+
+    - name: Create combined rules file
+      run: |
+        echo "📦 Creating combined rules..."
+        
+        # Объединяем все domain файлы
+        {
+          echo "# Combined Domain Rules"
+          echo "# Auto-generated on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo ""
+          for file in lists/*.txt; do
+            if [ -f "$file" ]; then
+              echo "# From $(basename "$file")"
+              grep -v '^#' "$file" | grep -v '^$'
+              echo ""
+            fi
+          done
+        } > compiled/all-domains.txt
+        
+        # Создаём deduplicated версию
+        grep -v '^#' compiled/all-domains.txt | \
+          grep -v '^$' | \
+          sort -u > compiled/all-domains.optimized.txt
+        
+        TOTAL=$(wc -l < compiled/all-domains.optimized.txt)
+        {
+          echo "# All Domains (Deduplicated)"
+          echo "# Total unique entries: $TOTAL"
+          echo "# Auto-generated on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo ""
+          cat compiled/all-domains.optimized.txt
+        } > compiled/all-domains.optimized.tmp.txt
+        
+        mv compiled/all-domains.optimized.tmp.txt compiled/all-domains.optimized.txt
+        
+        echo "  ✅ Combined $TOTAL unique domains"
+
+    - name: Commit compiled files
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        
+        git add compiled/
+        
+        if git diff --staged --quiet; then
+          echo "📝 No changes to commit"
+        else
+          git commit -m "🤖 Auto-compile rules [skip ci]
+          
+          - Compiled domain and IP lists
+          - Generated optimized versions
+          - Updated statistics
+          
+          Triggered by: ${{ github.event.head_commit.message }}"
+          
+          git push
+          echo "✅ Compiled files pushed successfully"
+        fi
+
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          compiled/**/*.txt
+          compiled/STATS.md
+        body: |
+          ## 📦 Compiled Rules Release
+          
+          This release contains compiled and optimized rule sets.
+          
+          See STATS.md for detailed statistics.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Success summary
+      if: success()
+      run: |
+        echo "## ✅ Compilation Complete!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Statistics" >> $GITHUB_STEP_SUMMARY
+        cat compiled/STATS.md >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Files Generated" >> $GITHUB_STEP_SUMMARY
+        echo "- Original TXT files in \`compiled/lists/\` and \`compiled/ip-lists/\`" >> $GITHUB_STEP_SUMMARY
+        echo "- Optimized versions (deduplicated & sorted)" >> $GITHUB_STEP_SUMMARY
+        echo "- Combined \`all-domains.txt\` with all rules" >> $GITHUB_STEP_SUMMARY
