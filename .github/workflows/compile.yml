@@ -1,4 +1,4 @@
-name: Compile rule sets (domains + ips)
+name: Build MRS (domains + ips)
 
 on:
   push:
@@ -17,31 +17,30 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download MRS binary
+      - name: Install tools
         run: |
-          mkdir -p tools
-          cd tools
-          
-          # Скачиваем последний релиз
-          LATEST_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mrs/releases/latest \
-            | grep browser_download_url | grep linux-amd64 | cut -d '"' -f 4)
+          sudo apt update
+          sudo apt install -y curl wget jq
 
-          wget "$LATEST_URL" -O mrs.tar.gz
-          tar -xzf mrs.tar.gz
-          chmod +x mrs
-          
-          echo "$PWD" >> $GITHUB_PATH
+      - name: Download & install Mihomo
+        run: |
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -L https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64.deb \
+            -o mihomo.deb
+
+          sudo apt install --fix-missing ./mihomo.deb
 
       - name: Prepare folders
-        run: mkdir -p compiled tmp_build
-
-      ############################################
-      # 1) PROCESS DOMAIN LISTS
-      ############################################
-      - name: Build combined domain rule text
         run: |
-          OUTPUT="tmp_build/all-domains.txt"
-          echo "" > "$OUTPUT"
+          mkdir -p compiled tmp_build
+
+      ########################################
+      #      DOMAIN LISTS (convert → YAML)
+      ########################################
+      - name: Prepare domain YAML
+        run: |
+          OUTPUT="tmp_build/domains.yaml"
+          echo "payload:" > "$OUTPUT"
 
           find lists -type f -print0 | while IFS= read -r -d '' file; do
             while IFS= read -r line; do
@@ -49,25 +48,22 @@ jobs:
               if [[ -z "$DOMAIN" || "$DOMAIN" == \#* ]]; then
                 continue
               fi
-
-              if [[ "$DOMAIN" != *"."*"."* ]]; then
-                echo "DOMAIN-SUFFIX,$DOMAIN" >> "$OUTPUT"
-              else
-                echo "DOMAIN,$DOMAIN" >> "$OUTPUT"
-              fi
+              echo "- '+.${DOMAIN}'" >> "$OUTPUT"
             done < "$file"
           done
 
-      - name: Compile domains.mrs
+      - name: Convert domains.mrs
         run: |
-          mrs compile --output compiled/domains.mrs tmp_build/all-domains.txt
+          mihomo convert-ruleset domain yaml \
+            tmp_build/domains.yaml \
+            compiled/domains.mrs
 
-      ############################################
-      # 2) PROCESS IP LISTS
-      ############################################
-      - name: Build combined IP rule text
+      ########################################
+      #      IP LISTS (convert → MRS)
+      ########################################
+      - name: Prepare IP text
         run: |
-          OUTPUT="tmp_build/all-ips.txt"
+          OUTPUT="tmp_build/ips.txt"
           echo "" > "$OUTPUT"
 
           find ip-lists -type f -print0 | while IFS= read -r -d '' file; do
@@ -76,26 +72,28 @@ jobs:
               if [[ -z "$IP" || "$IP" == \#* ]]; then
                 continue
               fi
-              echo "IP-CIDR,$IP" >> "$OUTPUT"
+              echo "$IP" >> "$OUTPUT"
             done < "$file"
           done
 
-      - name: Compile ips.mrs
+      - name: Convert ips.mrs
         run: |
-          mrs compile --output compiled/ips.mrs tmp_build/all-ips.txt
+          mihomo convert-ruleset ipcidr text \
+            tmp_build/ips.txt \
+            compiled/ips.mrs
 
-      ############################################
-      # COMMIT
-      ############################################
-      - name: Commit compiled files
+      ########################################
+      #              COMMIT
+      ########################################
+      - name: Commit changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          
-          git add compiled/
-          git commit -m "🔧 Auto-compile domain + IP MRS" || echo "No changes"
 
-      - name: Push changes
+          git add compiled/
+          git commit -m "🔧 Auto-build MRS (domains + ips)" || echo "No changes"
+
+      - name: Push
         uses: ad-m/github-push-action@v0.8.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
