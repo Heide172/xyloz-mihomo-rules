@@ -22,13 +22,11 @@ jobs:
           sudo apt update
           sudo apt install -y curl wget jq
 
-      - name: Download & install Mihomo
+      - name: Download Mihomo
         run: |
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -L https://github.com/MetaCubeX/mihomo/releases/latest/download/mihomo-linux-amd64.deb \
-            -o mihomo.deb
-
-          sudo apt install --fix-missing ./mihomo.deb
+          curl -L https://github.com/MetaCubeX/mihomo/releases/download/v1.19.9/mihomo-linux-amd64-v1.19.9.deb -o mihomo.deb
+          sudo dpkg -i mihomo.deb
+          sudo apt-get install -f -y
 
       - name: Prepare folders
         run: |
