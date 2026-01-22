@@ -10,7 +10,7 @@ permissions:
 
 env:
   MIHOMO_VERSION: "1.19.9"
-  SING_BOX_VERSION: "1.10.7"   # поменяй при необходимости
+  SING_BOX_VERSION: "1.11.4"
 
 jobs:
   build:
