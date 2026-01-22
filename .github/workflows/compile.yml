@@ -109,7 +109,7 @@ jobs:
 
           # Source rule-set для sing-box (домен как suffix)
           jq -n --argjson arr "$DOMAINS_ARRAY" \
-            '{version:4, rules:[{domain_suffix:$arr}]}' > "$JSON"
+            '{version:3, rules:[{domain_suffix:$arr}]}' > "$JSON"
 
           jq '.rules[0].domain_suffix | length' "$JSON" >/dev/null
 
@@ -160,7 +160,7 @@ jobs:
           IPS_ARRAY="$(jq -Rn '[inputs | select(length>0)]' < "$RAW")"
 
           jq -n --argjson arr "$IPS_ARRAY" \
-            '{version:4, rules:[{ip_cidr:$arr}]}' > "$JSON"
+            '{version:3, rules:[{ip_cidr:$arr}]}' > "$JSON"
 
           jq '.rules[0].ip_cidr | length' "$JSON" >/dev/null
 
