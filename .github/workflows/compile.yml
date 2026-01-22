@@ -1,13 +1,16 @@
-name: Build MRS (domains + ips)
+name: Build rulesets (MRS + SRS)
 
 on:
   push:
-    branches:
-      - master
+    branches: [ master ]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+env:
+  MIHOMO_VERSION: "1.19.9"
+  SING_BOX_VERSION: "1.10.7"   # поменяй при необходимости
 
 jobs:
   build:
@@ -20,76 +23,167 @@ jobs:
       - name: Install tools
         run: |
           sudo apt update
-          sudo apt install -y curl wget jq
+          sudo apt install -y curl wget jq tar
 
-      - name: Download Mihomo
+      # -----------------------------
+      # Install Mihomo (for .mrs)
+      # -----------------------------
+      - name: Download & install Mihomo
         run: |
-          curl -L https://github.com/MetaCubeX/mihomo/releases/download/v1.19.9/mihomo-linux-amd64-v1.19.9.deb -o mihomo.deb
-          sudo dpkg -i mihomo.deb
+          set -e
+          curl -L "https://github.com/MetaCubeX/mihomo/releases/download/v${MIHOMO_VERSION}/mihomo-linux-amd64-v${MIHOMO_VERSION}.deb" -o mihomo.deb
+          sudo dpkg -i mihomo.deb || true
           sudo apt-get install -f -y
+          mihomo -v || true
+
+      # -----------------------------
+      # Install sing-box (for .srs)
+      # -----------------------------
+      - name: Download & install sing-box
+        run: |
+          set -e
+          ARCH="linux-amd64"
+          TGZ="sing-box-${SING_BOX_VERSION}-${ARCH}.tar.gz"
+          URL="https://github.com/SagerNet/sing-box/releases/download/v${SING_BOX_VERSION}/${TGZ}"
+
+          curl -L "$URL" -o "$TGZ"
+          tar -xzf "$TGZ"
+          sudo install -m 0755 "sing-box-${SING_BOX_VERSION}-${ARCH}/sing-box" /usr/local/bin/sing-box
+          sing-box version
 
       - name: Prepare folders
         run: |
           mkdir -p compiled tmp_build
 
-      ########################################
-      #      DOMAIN LISTS (convert → YAML)
-      ########################################
-      - name: Prepare domain YAML
-        run: |
-          OUTPUT="tmp_build/domains.yaml"
-          echo "payload:" > "$OUTPUT"
+      # =========================================
+      # 1) DOMAIN LISTS
+      #    - mihomo: tmp_build/domains.yaml -> compiled/domains.mrs
+      #    - sing-box: tmp_build/domains.json -> compiled/domains.srs
+      # =========================================
 
+      - name: Collect domains (raw)
+        run: |
+          set -e
+          OUT="tmp_build/domains_raw.txt"
+          : > "$OUT"
+
+          # Собираем домены из lists/*, чистим пробелы, игнорируем пустые/комменты
           find lists -type f -print0 | while IFS= read -r -d '' file; do
             while IFS= read -r line; do
-              DOMAIN=$(echo "$line" | xargs)
-              if [[ -z "$DOMAIN" || "$DOMAIN" == \#* ]]; then
-                continue
-              fi
-              echo "- '+.${DOMAIN}'" >> "$OUTPUT"
+              line="$(echo "$line" | xargs)"
+              [[ -z "$line" ]] && continue
+              [[ "$line" == \#* ]] && continue
+              echo "$line" >> "$OUT"
             done < "$file"
           done
 
-      - name: Convert domains.mrs
+          # Удалим дубли, сохраним стабильную сортировку
+          sort -u "$OUT" -o "$OUT"
+          echo "Domains: $(wc -l < "$OUT")"
+
+      - name: Build domains.yaml for Mihomo (payload:+.suffix)
         run: |
+          set -e
+          RAW="tmp_build/domains_raw.txt"
+          YAML="tmp_build/domains.yaml"
+          echo "payload:" > "$YAML"
+          while IFS= read -r d; do
+            echo "- '+.${d}'" >> "$YAML"
+          done < "$RAW"
+
+      - name: Convert domains.mrs (mihomo)
+        run: |
+          set -e
           mihomo convert-ruleset domain yaml \
             tmp_build/domains.yaml \
             compiled/domains.mrs
 
-      ########################################
-      #      IP LISTS (convert → MRS)
-      ########################################
-      - name: Prepare IP text
+      - name: Build domains.json for sing-box (domain_suffix)
         run: |
-          OUTPUT="tmp_build/ips.txt"
-          echo "" > "$OUTPUT"
+          set -e
+          RAW="tmp_build/domains_raw.txt"
+          JSON="tmp_build/domains.json"
+
+          # Превращаем список строк в JSON-массив
+          DOMAINS_ARRAY="$(jq -Rn '[inputs | select(length>0)]' < "$RAW")"
+
+          # Source rule-set для sing-box (домен как suffix)
+          jq -n --argjson arr "$DOMAINS_ARRAY" \
+            '{version:4, rules:[{domain_suffix:$arr}]}' > "$JSON"
+
+          jq '.rules[0].domain_suffix | length' "$JSON" >/dev/null
+
+      - name: Compile domains.srs (sing-box)
+        run: |
+          set -e
+          sing-box rule-set compile \
+            --output compiled/domains.srs \
+            tmp_build/domains.json
+
+      # =========================================
+      # 2) IP LISTS
+      #    - mihomo: tmp_build/ips.txt -> compiled/ips.mrs
+      #    - sing-box: tmp_build/ips.json -> compiled/ips.srs
+      # =========================================
+
+      - name: Collect IP CIDRs (raw)
+        run: |
+          set -e
+          OUT="tmp_build/ips_raw.txt"
+          : > "$OUT"
 
           find ip-lists -type f -print0 | while IFS= read -r -d '' file; do
             while IFS= read -r line; do
-              IP=$(echo "$line" | xargs)
-              if [[ -z "$IP" || "$IP" == \#* ]]; then
-                continue
-              fi
-              echo "$IP" >> "$OUTPUT"
+              line="$(echo "$line" | xargs)"
+              [[ -z "$line" ]] && continue
+              [[ "$line" == \#* ]] && continue
+              echo "$line" >> "$OUT"
             done < "$file"
           done
 
-      - name: Convert ips.mrs
+          sort -u "$OUT" -o "$OUT"
+          echo "IPs: $(wc -l < "$OUT")"
+
+      - name: Convert ips.mrs (mihomo)
         run: |
+          set -e
           mihomo convert-ruleset ipcidr text \
-            tmp_build/ips.txt \
+            tmp_build/ips_raw.txt \
             compiled/ips.mrs
 
-      ########################################
-      #              COMMIT
-      ########################################
+      - name: Build ips.json for sing-box (ip_cidr)
+        run: |
+          set -e
+          RAW="tmp_build/ips_raw.txt"
+          JSON="tmp_build/ips.json"
+
+          IPS_ARRAY="$(jq -Rn '[inputs | select(length>0)]' < "$RAW")"
+
+          jq -n --argjson arr "$IPS_ARRAY" \
+            '{version:4, rules:[{ip_cidr:$arr}]}' > "$JSON"
+
+          jq '.rules[0].ip_cidr | length' "$JSON" >/dev/null
+
+      - name: Compile ips.srs (sing-box)
+        run: |
+          set -e
+          sing-box rule-set compile \
+            --output compiled/ips.srs \
+            tmp_build/ips.json
+
+      # =========================================
+      # 3) COMMIT & PUSH
+      # =========================================
       - name: Commit changes
         run: |
+          set -e
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
           git add compiled/
-          git commit -m "🔧 Auto-build MRS (domains + ips)" || echo "No changes"
+          git status --porcelain
+
+          git commit -m "🔧 Auto-build rulesets (MRS + SRS)" || echo "No changes"
 
       - name: Push
         uses: ad-m/github-push-action@v0.8.0
