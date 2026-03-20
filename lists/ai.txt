@@ -1,4 +1,5 @@
 intercom.io
 api-iam.intercom.io
 widget.intercom.io
+nexus-websocket-a.intercom.io
 browser-intake-datadoghq.com
