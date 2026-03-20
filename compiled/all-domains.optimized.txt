@@ -1,7 +1,0 @@
-# All Domains (Deduplicated)
-# Total unique entries: 3
-# Auto-generated on 2025-12-05 10:40:00 UTC
-
-docs.pega.com
-pega.com
-www.pega.com

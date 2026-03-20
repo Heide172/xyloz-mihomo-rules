@@ -1,8 +1,0 @@
-# Combined Domain Rules
-# Auto-generated on 2025-12-05 10:40:00 UTC
-
-# From test.txt
-pega.com
-www.pega.com
-docs.pega.com
-
