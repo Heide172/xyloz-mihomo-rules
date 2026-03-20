@@ -1,2 +1,4 @@
+intercom.io
+api-iam.intercom.io
 widget.intercom.io
 browser-intake-datadoghq.com
