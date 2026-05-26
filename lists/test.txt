@@ -5,3 +5,5 @@ docs.pega.com
 www.linkedin.com
 linkedin.com
 normaldata.tech
+www.sanctionsmap.eu
+sanctionsmap.eu
