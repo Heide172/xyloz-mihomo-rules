@@ -14,6 +14,7 @@ DOMAIN-SUFFIX,normaldata.tech
 DOMAIN-SUFFIX,pega.com
 DOMAIN-SUFFIX,sanctionsmap.eu
 DOMAIN-SUFFIX,trademo.com
+DOMAIN-SUFFIX,v1.hentailib.org
 DOMAIN-SUFFIX,widget.intercom.io
 DOMAIN-SUFFIX,wise.com
 DOMAIN-SUFFIX,www.linkedin.com
