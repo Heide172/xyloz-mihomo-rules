@@ -89,7 +89,7 @@ jobs:
 
           # Собираем домены из lists/*, чистим пробелы, игнорируем пустые/комменты
           find lists -type f -print0 | while IFS= read -r -d '' file; do
-            while IFS= read -r line; do
+            while IFS= read -r line || [ -n "$line" ]; do
               line="$(echo "$line" | xargs)"
               [[ -z "$line" ]] && continue
               [[ "$line" == \#* ]] && continue
@@ -153,7 +153,7 @@ jobs:
           : > "$OUT"
 
           find ip-lists -type f -print0 | while IFS= read -r -d '' file; do
-            while IFS= read -r line; do
+            while IFS= read -r line || [ -n "$line" ]; do
               line="$(echo "$line" | xargs)"
               [[ -z "$line" ]] && continue
               [[ "$line" == \#* ]] && continue
