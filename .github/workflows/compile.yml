@@ -4,6 +4,9 @@ on:
   push:
     branches: [ master ]
   workflow_dispatch:
+  schedule:
+    # Weekly AWS ip-ranges refresh — Mondays 04:17 UTC
+    - cron: '17 4 * * 1'
 
 permissions:
   contents: write
@@ -54,6 +57,23 @@ jobs:
       - name: Prepare folders
         run: |
           mkdir -p compiled tmp_build
+
+      # -----------------------------
+      # Refresh AWS ap-northeast-2 prefixes (weekly / manual only)
+      # On normal pushes the committed file is used as-is.
+      # -----------------------------
+      - name: Refresh AWS ap-northeast-2 prefixes
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          set -e
+          curl -sL https://ip-ranges.amazonaws.com/ip-ranges.json -o tmp_build/aws.json
+          {
+            echo "# AWS region ap-northeast-2 (Seoul) IPv4 prefixes"
+            echo "# Source: https://ip-ranges.amazonaws.com/ip-ranges.json (region=ap-northeast-2)"
+            echo "# Auto-refreshed weekly by compile.yml; DO NOT EDIT manually."
+            jq -r '.prefixes[] | select(.region=="ap-northeast-2") | .ip_prefix' tmp_build/aws.json | sort -u
+          } > ip-lists/aws-ap-northeast-2.txt
+          echo "AWS ap-northeast-2 prefixes: $(grep -cv '^#' ip-lists/aws-ap-northeast-2.txt)"
 
       # =========================================
       # 1) DOMAIN LISTS
@@ -172,7 +192,45 @@ jobs:
             tmp_build/ips.json
 
       # =========================================
-      # 3) COMMIT & PUSH
+      # 3) ROUTER MOUNT (classical rules .txt)
+      #    For mihomo-proxy-ros /root/.config/mihomo/rule_set_list/ mount.
+      #    Consumed by RouterOS scripts/xyloz-rules-sync.rsc -> ruleset_txt/xyloz.txt.
+      #    telegram.txt is EXCLUDED: Telegram has its own dedicated group on the
+      #    router (TELEGRAM_* env), routing it via xyloz too would hijack it.
+      # =========================================
+      - name: Generate router-classical.txt (mihomo-proxy-ros mount)
+        run: |
+          set -e
+          OUT="compiled/router-classical.txt"
+          {
+            echo "# Auto-generated classical rules for mihomo-proxy-ros mount."
+            echo "# Sourced from lists/*.txt + ip-lists/*.txt (telegram excluded)."
+            echo "# DO NOT EDIT; regenerated on each push."
+            echo ""
+            echo "# --- domains ---"
+            # domains_raw.txt is already cleaned + sorted -u
+            while IFS= read -r d || [ -n "$d" ]; do
+              [[ -z "$d" ]] && continue
+              echo "DOMAIN-SUFFIX,${d}"
+            done < tmp_build/domains_raw.txt
+
+            echo "# --- ips ---"
+            find ip-lists -type f -name '*.txt' ! -name 'telegram.txt' -print0 | sort -z \
+              | while IFS= read -r -d '' file; do
+                  while IFS= read -r line || [ -n "$line" ]; do
+                    ip="$(echo "$line" | xargs)"
+                    [[ -z "$ip" || "$ip" == \#* ]] && continue
+                    # ranges (a-b) aren't valid classical; skip with a note
+                    if [[ "$ip" == *-* ]]; then echo "# skipped range: $ip"; continue; fi
+                    [[ "$ip" != */* ]] && ip="${ip}/32"
+                    echo "IP-CIDR,${ip}"
+                  done < "$file"
+                done
+          } > "$OUT"
+          echo "router-classical rules: $(grep -cE '^(DOMAIN-SUFFIX|IP-CIDR),' "$OUT")"
+
+      # =========================================
+      # 4) COMMIT & PUSH
       # =========================================
       - name: Commit changes
         run: |
@@ -180,10 +238,10 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add compiled/
+          git add ip-lists/ compiled/
           git status --porcelain
 
-          git commit -m "🔧 Auto-build rulesets (MRS + SRS)" || echo "No changes"
+          git commit -m "🔧 Auto-build rulesets (MRS + SRS + router-classical)" || echo "No changes"
 
       - name: Push
         uses: ad-m/github-push-action@v0.8.0
