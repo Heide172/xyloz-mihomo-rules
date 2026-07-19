@@ -1,0 +1,7 @@
+# Apple App Store — заворот в VPN
+# Прямой путь РФ→Apple-CDN рвётся на TLS-хендшейке (Fastly/Akamai), нода достаёт нормально.
+# Каждый домен компилится как +.домен (suffix), покрывает поддомены.
+apps.apple.com
+itunes.apple.com
+mzstatic.com
+cdn-apple.com
