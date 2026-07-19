@@ -4,11 +4,15 @@
 
 # --- domains ---
 DOMAIN-SUFFIX,api-iam.intercom.io
+DOMAIN-SUFFIX,apps.apple.com
 DOMAIN-SUFFIX,browser-intake-datadoghq.com
+DOMAIN-SUFFIX,cdn-apple.com
 DOMAIN-SUFFIX,docs.pega.com
 DOMAIN-SUFFIX,grok.com
 DOMAIN-SUFFIX,intercom.io
+DOMAIN-SUFFIX,itunes.apple.com
 DOMAIN-SUFFIX,linkedin.com
+DOMAIN-SUFFIX,mzstatic.com
 DOMAIN-SUFFIX,nexus-websocket-a.intercom.io
 DOMAIN-SUFFIX,normaldata.tech
 DOMAIN-SUFFIX,pega.com
