@@ -15,6 +15,7 @@ DOMAIN-SUFFIX,linkedin.com
 DOMAIN-SUFFIX,mzstatic.com
 DOMAIN-SUFFIX,nexus-websocket-a.intercom.io
 DOMAIN-SUFFIX,normaldata.tech
+DOMAIN-SUFFIX,onet.pl
 DOMAIN-SUFFIX,pega.com
 DOMAIN-SUFFIX,sanctionsmap.eu
 DOMAIN-SUFFIX,trademo.com
@@ -22,6 +23,7 @@ DOMAIN-SUFFIX,v1.hentailib.org
 DOMAIN-SUFFIX,widget.intercom.io
 DOMAIN-SUFFIX,wise.com
 DOMAIN-SUFFIX,www.linkedin.com
+DOMAIN-SUFFIX,www.onet.pl
 DOMAIN-SUFFIX,www.pega.com
 DOMAIN-SUFFIX,www.sanctionsmap.eu
 DOMAIN-SUFFIX,www.trademo.com
