@@ -11,3 +11,5 @@ wise.com
 grok.com
 www.trademo.com
 trademo.com
+www.onet.pl
+onet.pl
