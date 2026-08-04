@@ -3,11 +3,16 @@
 # DO NOT EDIT; regenerated on each push.
 
 # --- domains ---
+DOMAIN-SUFFIX,aistudio.google.com
 DOMAIN-SUFFIX,api-iam.intercom.io
 DOMAIN-SUFFIX,apps.apple.com
+DOMAIN-SUFFIX,bard.google.com
 DOMAIN-SUFFIX,browser-intake-datadoghq.com
 DOMAIN-SUFFIX,cdn-apple.com
+DOMAIN-SUFFIX,chatgpt.com
 DOMAIN-SUFFIX,docs.pega.com
+DOMAIN-SUFFIX,gemini.google.com
+DOMAIN-SUFFIX,generativelanguage.googleapis.com
 DOMAIN-SUFFIX,grok.com
 DOMAIN-SUFFIX,intercom.io
 DOMAIN-SUFFIX,itunes.apple.com
@@ -15,7 +20,10 @@ DOMAIN-SUFFIX,linkedin.com
 DOMAIN-SUFFIX,mzstatic.com
 DOMAIN-SUFFIX,nexus-websocket-a.intercom.io
 DOMAIN-SUFFIX,normaldata.tech
+DOMAIN-SUFFIX,oaistatic.com
+DOMAIN-SUFFIX,oaiusercontent.com
 DOMAIN-SUFFIX,onet.pl
+DOMAIN-SUFFIX,openai.com
 DOMAIN-SUFFIX,pega.com
 DOMAIN-SUFFIX,sanctionsmap.eu
 DOMAIN-SUFFIX,trademo.com
