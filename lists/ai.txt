@@ -1,3 +1,22 @@
+# ИИ-сервисы — заворот в VPN.
+# Сами по себе в РФ не заблокированы, поэтому в reFilter их нет; блокируют они,
+# по стране клиента. Раньше держались только на чужом ru-bundle: когда он не
+# скачивался, ChatGPT и Gemini отваливались, а Telegram (наш ip-список) жил.
+# Каждый домен компилится как +.домен (suffix), покрывает поддомены.
+
+# OpenAI / ChatGPT
+openai.com
+chatgpt.com
+oaistatic.com
+oaiusercontent.com
+
+# Google Gemini / AI Studio
+gemini.google.com
+aistudio.google.com
+bard.google.com
+generativelanguage.googleapis.com
+
+# Intercom + Datadog — виджет поддержки, не ИИ (лежало здесь до правки)
 intercom.io
 api-iam.intercom.io
 widget.intercom.io
