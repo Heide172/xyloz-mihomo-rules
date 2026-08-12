@@ -3,6 +3,7 @@
 # DO NOT EDIT; regenerated on each push.
 
 # --- domains ---
+DOMAIN-SUFFIX,admin.revo.wsonigaming.com
 DOMAIN-SUFFIX,aistudio.google.com
 DOMAIN-SUFFIX,api-iam.intercom.io
 DOMAIN-SUFFIX,apps.apple.com
@@ -26,6 +27,7 @@ DOMAIN-SUFFIX,onet.pl
 DOMAIN-SUFFIX,openai.com
 DOMAIN-SUFFIX,pega.com
 DOMAIN-SUFFIX,sanctionsmap.eu
+DOMAIN-SUFFIX,time.onigaming.com
 DOMAIN-SUFFIX,trademo.com
 DOMAIN-SUFFIX,v1.hentailib.org
 DOMAIN-SUFFIX,widget.intercom.io
