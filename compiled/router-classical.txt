@@ -17,6 +17,7 @@ DOMAIN-SUFFIX,generativelanguage.googleapis.com
 DOMAIN-SUFFIX,grok.com
 DOMAIN-SUFFIX,intercom.io
 DOMAIN-SUFFIX,itunes.apple.com
+DOMAIN-SUFFIX,kino.pub
 DOMAIN-SUFFIX,linkedin.com
 DOMAIN-SUFFIX,mzstatic.com
 DOMAIN-SUFFIX,nexus-websocket-a.intercom.io
